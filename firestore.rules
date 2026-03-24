@@ -1,0 +1,126 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isManagerOrAdmin() {
+      return isAuthenticated() && (request.auth.token.manager == true || request.auth.token.admin == true);
+    }
+
+    function isSuperintendent(userId) {
+      return get(/databases/$(database)/documents/employees/$(userId)).data.jobTitle == 'Superintendente de Operaciones';
+    }
+
+    // --- Rules for 'employees' collection ---
+    match /employees/{userId} {
+      allow create: if isOwner(userId);
+      allow read: if isAuthenticated();
+      allow update: if isManagerOrAdmin();
+      allow delete: if request.auth.token.admin == true;
+
+      match /documents/{docId} {
+        allow get, list: if isManagerOrAdmin() || isOwner(userId);
+        allow write: if isManagerOrAdmin() || isOwner(userId);
+      }
+      match /competencyAssessments/{assessmentId} {
+        allow get, list: if isManagerOrAdmin() || isOwner(userId);
+        allow write: if isManagerOrAdmin();
+      }
+    }
+    
+    match /employees {
+      allow list: if isAuthenticated();
+    }
+
+    // --- Rules for 'leaveRequests' collection ---
+    match /leaveRequests/{requestId} {
+      allow get: if isAuthenticated() && (
+        resource.data.requesterId == request.auth.uid ||
+        resource.data.approvers.operationsSuperintendent.approverId == request.auth.uid ||
+        (resource.data.approvers.hrManager != null && resource.data.approvers.hrManager.approverId == request.auth.uid) ||
+        (resource.data.approvers.operationsSuperintendent.delegatedTo != null && resource.data.approvers.operationsSuperintendent.delegatedTo == request.auth.uid) ||
+        isManagerOrAdmin()
+      );
+      allow list: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.requesterId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+          (
+            resource.data.approvers.operationsSuperintendent.approverId == request.auth.uid ||
+            (resource.data.approvers.operationsSuperintendent.delegatedTo != null && resource.data.approvers.operationsSuperintendent.delegatedTo == request.auth.uid) ||
+            (resource.data.approvers.hrManager != null && resource.data.approvers.hrManager.approverId == request.auth.uid)
+          ) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'approvers'])
+      );
+      allow delete: if false;
+    }
+
+    // --- Rules for 'delegations' collection ---
+    match /delegations/{delegationId} {
+      allow read, write: if isOwner(delegationId) && isSuperintendent(delegationId);
+      allow delete: if false;
+    }
+
+    // --- General App Collections ---
+    match /jobTitles/{jobTitleId} { 
+      allow read: if isAuthenticated();
+      allow write: if request.auth.token.admin == true; 
+    }
+    
+    match /competencies/{competencyId} {
+        allow read: if isAuthenticated();
+        allow write: if isManagerOrAdmin();
+    }
+
+    match /courses/{courseId} {
+        allow read: if isAuthenticated();
+        allow write: if isManagerOrAdmin();
+    }
+
+    // --- User-specific Data Collections ---
+    match /trainingPlans/{planId} { 
+      allow get: if isManagerOrAdmin() || resource.data.employeeId == request.auth.uid;
+      allow list: if isManagerOrAdmin() || (request.query.where.employeeId is string && request.query.where.employeeId == request.auth.uid);
+      allow write: if isManagerOrAdmin();
+    }
+    
+    match /evaluations/{evaluationId} { 
+      allow get: if isManagerOrAdmin() || resource.data.employeeId == request.auth.uid || resource.data.evaluatorId == request.auth.uid;
+      allow list: if isAuthenticated(); // Allow query, security enforced by `get` rule and client-side query constraints
+      allow write: if isManagerOrAdmin() || request.auth.uid == resource.data.evaluatorId; 
+    }
+    
+    match /technicalAudits/{auditId} { 
+        allow get: if isManagerOrAdmin() || resource.data.auditedId == request.auth.uid || resource.data.auditorId == request.auth.uid;
+        allow list: if isAuthenticated(); // Allow query, security enforced by `get` rule and client-side query constraints
+        allow write: if isManagerOrAdmin(); 
+    }
+    
+    match /psychosocialRiskSurveys/{surveyId} { 
+        allow get: if isManagerOrAdmin() || resource.data.userId == request.auth.uid;
+        allow list: if isManagerOrAdmin() || (request.query.where.userId is string && request.query.where.userId == request.auth.uid);
+        allow create: if isAuthenticated(); 
+    }
+
+    // --- Rules for Collection Group Queries ---
+    match /{path=**}/documents/{docId} {
+      allow read, list: if isManagerOrAdmin();
+    }
+    match /{path=**}/competencyAssessments/{assessmentId} {
+      allow read, list: if isManagerOrAdmin();
+    }
+
+    // --- Fallback rule for all OTHER collections ---
+    match /{document=**} {
+        allow read, write: if request.auth.token.admin == true;
+    }
+  }
+}
