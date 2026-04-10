@@ -125,6 +125,13 @@ export default function EmployeesPage() {
             <CardTitle className="font-headline">Employees</CardTitle>
             <CardDescription>A list of all employees in the organization.</CardDescription>
         </div>
+        {isManagerOrAdmin && (
+          <EmployeeFormDialog onEmployeeUpdated={fetchEmployees}>
+             <Button>
+                Add Employee
+            </Button>
+          </EmployeeFormDialog>
+        )}
       </CardHeader>
       <CardContent>
         <Table>

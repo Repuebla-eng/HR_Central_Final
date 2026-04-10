@@ -9,6 +9,7 @@ import { db } from '@/lib/firebase/config';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, JobTitle } from '@/lib/types';
 import { format, parse, isValid } from 'date-fns';
+import { createEmployee } from './actions';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -49,10 +50,11 @@ const formSchema = z.object({
   department: z.string().min(2, 'Department must be at least 2 characters.'),
   status: z.enum(['Active', 'On Leave', 'Terminated']),
   hireDate: z.date(),
+  password: z.string().min(6, 'Password must be at least 6 characters.').optional().or(z.literal('')),
 });
 
 interface EmployeeFormDialogProps {
-  employee: Employee; // Now required, as this is only for editing
+  employee?: Employee; // Now optional
   onEmployeeUpdated: () => void;
   children: React.ReactNode;
 }
@@ -69,6 +71,15 @@ export default function EmployeeFormDialog({
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      jobTitle: '',
+      department: '',
+      status: 'Active',
+      hireDate: new Date(),
+      password: '',
+    }
   });
   
   useEffect(() => {
@@ -105,24 +116,43 @@ export default function EmployeeFormDialog({
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     try {
-      const employeeRef = doc(db, 'employees', employee.id);
-      await updateDoc(employeeRef, {
+      if (employee) {
+        // Edit Mode
+        const employeeRef = doc(db, 'employees', employee.id);
+        await updateDoc(employeeRef, {
+            ...values,
+            hireDate: Timestamp.fromDate(values.hireDate),
+        });
+        toast({
+          title: 'Success',
+          description: 'Employee details have been updated.',
+        });
+      } else {
+        // Create Mode
+        const result = await createEmployee({
           ...values,
-          hireDate: Timestamp.fromDate(values.hireDate),
-      });
-      toast({
-        title: 'Success',
-        description: 'Employee details have been updated.',
-      });
+          password: values.password || undefined,
+        });
+
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        toast({
+          title: 'Success',
+          description: 'New employee has been registered successfully.',
+        });
+      }
       
       onEmployeeUpdated();
       setOpen(false);
-    } catch (error) {
+      if (!employee) form.reset();
+    } catch (error: any) {
       console.error('Error saving employee:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to save employee data.',
+        description: error.message || 'Failed to save employee data.',
       });
     } finally {
       setLoading(false);
@@ -136,9 +166,11 @@ export default function EmployeeFormDialog({
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit Employee</DialogTitle>
+          <DialogTitle>{employee ? 'Edit Employee' : 'Register New Employee'}</DialogTitle>
           <DialogDescription>
-            Update the details for this employee.
+            {employee 
+              ? 'Update the details for this employee.' 
+              : 'Enter the details to create a new employee account.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -164,12 +196,27 @@ export default function EmployeeFormDialog({
                     <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                        <Input type="email" placeholder="e.g., jane.doe@example.com" {...field} disabled />
+                        <Input type="email" placeholder="e.g., jane.doe@example.com" {...field} disabled={!!employee} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
                 />
+                {!employee && (
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="Min 6 characters" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                 control={form.control}
                 name="jobTitle"
@@ -279,9 +326,9 @@ export default function EmployeeFormDialog({
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={loading || jobTitles.length === 0}>
+              <Button type="submit" disabled={loading || (jobTitles.length === 0 && !employee)}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {loading ? 'Saving...' : 'Save Changes'}
+                {loading ? 'Saving...' : (employee ? 'Save Changes' : 'Register Employee')}
               </Button>
             </DialogFooter>
           </form>

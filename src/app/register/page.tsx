@@ -46,10 +46,6 @@ export default function RegisterPage() {
       const user = userCredential.user;
       console.log("Auth user created. UID:", user.uid);
 
-      // Wait a moment for auth state to propagate to Firestore client
-      console.log("Waiting for auth state propagation...");
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       const newEmployeeData = {
         uid: user.uid,
         name: values.name,
@@ -62,16 +58,16 @@ export default function RegisterPage() {
         role: 'employee' as const,
       };
 
-      console.log("Writing to Firestore 'employees' collection...");
       const employeeRef = doc(db, 'employees', user.uid);
       
       // 2. Create employee document in Firestore
       try {
+        console.log("Attempting to write to Firestore...");
         await setDoc(employeeRef, newEmployeeData);
         console.log("Firestore document created successfully.");
         setRegistrationSuccess(true);
       } catch (firestoreError: any) {
-        console.error("Firestore Write Error detalails:", {
+        console.error("Firestore Write Error details:", {
           code: firestoreError.code,
           message: firestoreError.message,
           name: firestoreError.name
