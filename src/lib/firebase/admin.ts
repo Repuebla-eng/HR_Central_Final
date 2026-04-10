@@ -1,28 +1,35 @@
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps, getApp, cert, App } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
-if (!admin.apps.length) {
+function getAdminApp(): App {
+  if (getApps().length > 0) {
+    return getApp();
+  }
+
   try {
-    // We try to get the service account from environment variables first
-    // This is safer for production deployments (Firebase App Hosting)
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
     
     if (serviceAccountJson) {
       const serviceAccount = JSON.parse(serviceAccountJson);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
+      return initializeApp({
+        credential: cert(serviceAccount)
       });
     } else {
-      // Fallback to local file for development if environment variable is not set
-      // WARNING: Make sure service-account.json is in your .gitignore
+      // Fallback to local file for development
+      // Use require with a clear path or absolute path if possible
       const serviceAccount = require('../../../service-account.json');
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
+      return initializeApp({
+        credential: cert(serviceAccount)
       });
     }
   } catch (error) {
-    console.error('Firebase admin initialization error', error);
+    console.error('Error initializing Firebase Admin SDK:', error);
+    throw error;
   }
 }
 
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
+const adminApp = getAdminApp();
+
+export const adminAuth = getAuth(adminApp);
+export const adminDb = getFirestore(adminApp);
