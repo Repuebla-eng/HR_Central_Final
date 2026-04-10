@@ -39,9 +39,16 @@ export default function RegisterPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
+      console.log("Starting registration for:", values.email);
+      
       // 1. Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
+      console.log("Auth user created. UID:", user.uid);
+
+      // Wait a moment for auth state to propagate to Firestore client
+      console.log("Waiting for auth state propagation...");
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const newEmployeeData = {
         uid: user.uid,
@@ -55,24 +62,45 @@ export default function RegisterPage() {
         role: 'employee' as const,
       };
 
+      console.log("Writing to Firestore 'employees' collection...");
       const employeeRef = doc(db, 'employees', user.uid);
       
       // 2. Create employee document in Firestore
-      await setDoc(employeeRef, newEmployeeData);
-      
-      setRegistrationSuccess(true);
+      try {
+        await setDoc(employeeRef, newEmployeeData);
+        console.log("Firestore document created successfully.");
+        setRegistrationSuccess(true);
+      } catch (firestoreError: any) {
+        console.error("Firestore Write Error detalails:", {
+          code: firestoreError.code,
+          message: firestoreError.message,
+          name: firestoreError.name
+        });
+        
+        throw {
+          code: 'firestore/' + (firestoreError.code || 'unknown'),
+          message: firestoreError.message,
+          originalError: firestoreError
+        };
+      }
 
     } catch (error: any) {
-      console.error("Registration Error: ", error);
+      console.error("Registration flow failed:", error);
       let description = 'An unexpected error occurred.';
+      
       if (error.code === 'auth/email-already-in-use') {
         description = 'This email is already registered.';
-      } else if (error.code === 'permission-denied' || error.name === 'FirebaseError' && error.message.includes('permission-denied')) {
-        description = 'Permission denied. Could not create employee profile in the database.';
+      } else if (error.code?.startsWith('firestore/permission-denied') || error.message?.includes('permission-denied')) {
+        description = 'Database error: Permission denied. The account was created in Auth but your profile could not be initialized in the database. Please contact support.';
+      } else if (error.code?.startsWith('firestore/')) {
+        description = `Database error (${error.code}): ${error.message}`;
+      } else if (error.message) {
+        description = error.message;
       }
+      
       toast({
         variant: 'destructive',
-        title: 'Registration Failed',
+        title: 'Registration Issue',
         description: description,
       });
     } finally {
