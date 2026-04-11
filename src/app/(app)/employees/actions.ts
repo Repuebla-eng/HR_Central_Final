@@ -13,6 +13,10 @@ export async function createEmployee(data: {
   hireDate: Date;
 }) {
   try {
+    if (!adminAuth || !adminDb) {
+      throw new Error('Configuración de Firebase Admin incompleta. Por favor, verifica el secreto SERVICE_ACCOUNT_KEY en el panel de control.');
+    }
+
     // 1. Create user in Firebase Auth
     const userRecord = await adminAuth.createUser({
       email: data.email,
