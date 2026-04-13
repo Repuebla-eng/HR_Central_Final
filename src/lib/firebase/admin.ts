@@ -33,8 +33,15 @@ function getAdminApp(): App | null {
         });
       }
       
-      console.warn('Firebase Admin: No service account found in environment or at:', saPath);
-      return null;
+      // PRODUCTION FALLBACK: Try initializing with default credentials
+      // This works automatically within Google Cloud environments like Cloud Functions (Hosting Frameworks)
+      try {
+        console.log('Firebase Admin: Attempting default initialization...');
+        return initializeApp();
+      } catch (defaultError) {
+        console.warn('Firebase Admin: No service account found and default initialization failed.', defaultError);
+        return null;
+      }
     }
   } catch (error) {
     console.error('Error initializing Firebase Admin SDK:', error);

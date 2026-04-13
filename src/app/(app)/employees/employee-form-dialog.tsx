@@ -229,9 +229,9 @@ export default function EmployeeFormDialog({
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Job Title</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} name={field.name}>
                         <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger id={field.name}>
                             <SelectValue placeholder="Select a job role" />
                         </SelectTrigger>
                         </FormControl>
@@ -264,9 +264,9 @@ export default function EmployeeFormDialog({
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value} name={field.name}>
                             <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger id={field.name}>
                                 <SelectValue placeholder="Select employee status" />
                             </SelectTrigger>
                             </FormControl>
@@ -290,6 +290,8 @@ export default function EmployeeFormDialog({
                                 <div className="relative">
                                 <FormControl>
                                     <Input
+                                        id={field.name}
+                                        name={field.name}
                                         value={field.value ? format(field.value, 'yyyy-MM-dd') : ''}
                                         onChange={(e) => {
                                             const date = parse(e.target.value, 'yyyy-MM-dd', new Date());
