@@ -135,7 +135,13 @@ export default function EmployeeFormDialog({
         });
 
         if (!result.success) {
-          throw new Error(result.error);
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: result.error,
+          });
+          setLoading(false);
+          return;
         }
 
         toast({
@@ -148,11 +154,11 @@ export default function EmployeeFormDialog({
       setOpen(false);
       if (!employee) form.reset();
     } catch (error: any) {
-      console.error('Error saving employee:', error);
+      console.error('Error in onSubmit:', error);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Failed to save employee data.',
+        title: 'Error de Registro',
+        description: error.message || 'No se pudo registrar el empleado. Por favor, intente de nuevo.',
       });
     } finally {
       setLoading(false);

@@ -15,6 +15,7 @@ function getAdminApp(): App | null {
     const serviceAccountJson = process.env.SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT;
     
     if (serviceAccountJson) {
+      console.log('Firebase Admin: Initializing with service account from environment.');
       const serviceAccount = JSON.parse(serviceAccountJson);
       return initializeApp({
         credential: cert(serviceAccount)
@@ -22,15 +23,17 @@ function getAdminApp(): App | null {
     } else {
       // Fallback to local file for development using absolute path
       const saPath = path.resolve(process.cwd(), 'service-account.json');
+      console.log('Firebase Admin: Checking local service account file at:', saPath);
       
       if (fs.existsSync(saPath)) {
+        console.log('Firebase Admin: Local service account file found. Initializing...');
         const serviceAccount = JSON.parse(fs.readFileSync(saPath, 'utf8'));
         return initializeApp({
           credential: cert(serviceAccount)
         });
       }
       
-      console.warn('Firebase Admin: No service account found in environment or local file.');
+      console.warn('Firebase Admin: No service account found in environment or at:', saPath);
       return null;
     }
   } catch (error) {
