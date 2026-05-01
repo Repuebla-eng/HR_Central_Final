@@ -1,6 +1,6 @@
 'use server';
 
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin';
 import { revalidatePath } from 'next/cache';
 
 export async function createEmployee(data: {
@@ -16,9 +16,15 @@ export async function createEmployee(data: {
   console.log('Input data:', JSON.stringify({ ...data, password: '***' }));
   
   try {
+    const adminAuth = getAdminAuth();
+    const adminDb = getAdminDb();
+
     if (!adminAuth || !adminDb) {
       console.error('Firebase Admin not initialized. adminAuth:', !!adminAuth, 'adminDb:', !!adminDb);
-      throw new Error('Configuración de Firebase Admin incompleta. Por favor, verifica el secreto SERVICE_ACCOUNT_KEY en el panel de control.');
+      return { 
+        success: false, 
+        error: 'Configuración de Firebase Admin incompleta. El servidor no pudo conectarse a Firebase automáticamente.' 
+      };
     }
 
     // 1. Prepare data and handle potential string dates from Server Action serialization
@@ -37,7 +43,10 @@ export async function createEmployee(data: {
         console.log('User created successfully. UID:', userRecord.uid);
     } catch (authError: any) {
         console.error('Error creating Auth user:', authError);
-        throw new Error(`Error en Firebase Auth: ${authError.message}`);
+        return { 
+          success: false, 
+          error: `Error en Firebase Auth: ${authError.message}. Verifica los permisos de la cuenta de servicio.` 
+        };
     }
 
     // 3. Set initial custom claims (employee by default)
@@ -51,7 +60,8 @@ export async function createEmployee(data: {
         console.log('Claims set successfully.');
     } catch (claimsError: any) {
         console.error('Error setting claims:', claimsError);
-        // We continue even if claims fail, but log it
+        // We continue even if claims fail, but log it as a warning in the result if possible
+        console.warn('Continúando a pesar del error en claims...');
     }
 
     // 4. Create employee document in Firestore
@@ -74,7 +84,10 @@ export async function createEmployee(data: {
         console.log('Firestore document created successfully.');
     } catch (dbError: any) {
         console.error('Error writing to Firestore:', dbError);
-        throw new Error(`Error en Firestore: ${dbError.message}`);
+        return { 
+          success: false, 
+          error: `Error en Firestore: ${dbError.message}. Verifica las reglas de base de datos o permisos.` 
+        };
     }
 
     revalidatePath('/employees');

@@ -5,51 +5,65 @@ import path from 'path';
 import fs from 'fs';
 
 function getAdminApp(): App | null {
-  if (getApps().length > 0) {
-    return getApp();
-  }
+  // 1. Return existing app if already initialized
+  const apps = getApps();
+  if (apps.length > 0) return apps[0];
 
   try {
-    // Priority 1: SERVICE_ACCOUNT_KEY (Non-reserved name for Firebase Functions)
-    // Priority 2: FIREBASE_SERVICE_ACCOUNT (Legacy)
+    // 2. Try Service Account from environment variables
     const serviceAccountJson = process.env.SERVICE_ACCOUNT_KEY || process.env.FIREBASE_SERVICE_ACCOUNT;
-    
     if (serviceAccountJson) {
       console.log('Firebase Admin: Initializing with service account from environment.');
-      const serviceAccount = JSON.parse(serviceAccountJson);
       return initializeApp({
-        credential: cert(serviceAccount)
+        credential: cert(JSON.parse(serviceAccountJson))
       });
-    } else {
-      // Fallback to local file for development using absolute path
-      const saPath = path.resolve(process.cwd(), 'service-account.json');
-      console.log('Firebase Admin: Checking local service account file at:', saPath);
-      
-      if (fs.existsSync(saPath)) {
-        console.log('Firebase Admin: Local service account file found. Initializing...');
-        const serviceAccount = JSON.parse(fs.readFileSync(saPath, 'utf8'));
-        return initializeApp({
-          credential: cert(serviceAccount)
-        });
-      }
-      
-      // PRODUCTION FALLBACK: Try initializing with default credentials
-      // This works automatically within Google Cloud environments like Cloud Functions (Hosting Frameworks)
-      try {
-        console.log('Firebase Admin: Attempting default initialization...');
-        return initializeApp();
-      } catch (defaultError) {
-        console.warn('Firebase Admin: No service account found and default initialization failed.', defaultError);
-        return null;
-      }
     }
-  } catch (error) {
-    console.error('Error initializing Firebase Admin SDK:', error);
+
+    // 3. Try local service-account.json (Development)
+    const saPath = path.resolve(process.cwd(), 'service-account.json');
+    if (fs.existsSync(saPath)) {
+      console.log('Firebase Admin: Initializing with local service-account.json');
+      return initializeApp({
+        credential: cert(JSON.parse(fs.readFileSync(saPath, 'utf8')))
+      });
+    }
+
+    // 4. PRODUCTION FALLBACK: Use Application Default Credentials (ADC)
+    // This is the standard way for Cloud Functions / Cloud Run
+    console.log('Firebase Admin: Initializing with Application Default Credentials...');
+    return initializeApp();
+  } catch (error: any) {
+    if (error.code === 'app/duplicate-app') {
+      return getApps()[0];
+    }
+    console.error('Firebase Admin: Error during initialization:', error);
     return null;
   }
 }
 
-const adminApp = getAdminApp();
+let adminAuth: ReturnType<typeof getAuth> | null = null;
+let adminDb: ReturnType<typeof getFirestore> | null = null;
+let initialized = false;
 
-export const adminAuth = adminApp ? getAuth(adminApp) : null;
-export const adminDb = adminApp ? getFirestore(adminApp) : null;
+function initializeAdmin() {
+  if (initialized) return { adminAuth, adminDb };
+  
+  const app = getAdminApp();
+  if (app) {
+    try {
+      adminAuth = getAuth(app);
+      adminDb = getFirestore(app);
+      initialized = true;
+      console.log('Firebase Admin: Services initialized successfully.');
+    } catch (err) {
+      console.error('Firebase Admin: Error initializing services:', err);
+    }
+  } else {
+    console.error('Firebase Admin: Failed to obtain an Admin App instance.');
+  }
+  
+  return { adminAuth, adminDb };
+}
+
+export const getAdminAuth = () => initializeAdmin().adminAuth;
+export const getAdminDb = () => initializeAdmin().adminDb;
