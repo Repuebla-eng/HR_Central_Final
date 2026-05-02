@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { CheckCircle, Clock } from 'lucide-react';
+import { CheckCircle, Clock, ExternalLink } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -28,6 +28,7 @@ import NewTrainingPlanDialog from './new-training-plan-dialog';
 type EnrichedTrainingPlan = TrainingPlan & {
   employeeName?: string;
   courseTitle?: string;
+  courseUrl?: string;
 };
 
 export default function TrainingPage() {
@@ -56,6 +57,7 @@ export default function TrainingPage() {
       const enrichedPlans = await Promise.all(plansData.map(async (plan) => {
         let employeeName: string | undefined = undefined;
         let courseTitle: string | undefined = undefined;
+        let courseUrl: string | undefined = undefined;
 
         if (plan.employeeId) {
             try {
@@ -71,14 +73,16 @@ export default function TrainingPage() {
             try {
                 const courseDoc = await getDoc(doc(db, "courses", plan.assignedCourseId));
                 if (courseDoc.exists()) {
-                    courseTitle = (courseDoc.data() as Course).title;
+                    const courseData = courseDoc.data() as Course;
+                    courseTitle = courseData.title;
+                    courseUrl = courseData.url;
                 }
             } catch (e) {
                 console.warn(`Could not fetch course title for ID ${plan.assignedCourseId}`, e);
             }
         }
 
-        return { ...plan, employeeName, courseTitle };
+        return { ...plan, employeeName, courseTitle, courseUrl };
       }));
 
       setPlans(enrichedPlans);
@@ -177,29 +181,39 @@ export default function TrainingPage() {
                                 {plan.deadline ? plan.deadline.toDate().toLocaleDateString() : 'Not set'}
                             </TableCell>
                             <TableCell>
-                                <Select
-                                  value={plan.status}
-                                  onValueChange={(newStatus: 'Pending' | 'Completed') => handleStatusChange(plan.id, newStatus)}
-                                  disabled={loading || (!isManagerOrAdmin && user?.uid !== plan.employeeId)}
-                                >
-                                  <SelectTrigger className="w-[120px]">
-                                    <SelectValue placeholder="Status" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Pending">
-                                        <div className="flex items-center gap-2">
-                                          <Clock className="h-4 w-4 text-muted-foreground" />
-                                          Pending
-                                        </div>
-                                    </SelectItem>
-                                    <SelectItem value="Completed">
-                                        <div className="flex items-center gap-2">
-                                          <CheckCircle className="h-4 w-4 text-green-600" />
-                                          Completed
-                                        </div>
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                <div className="flex items-center gap-2">
+                                    <Select
+                                      value={plan.status}
+                                      onValueChange={(newStatus: 'Pending' | 'Completed') => handleStatusChange(plan.id, newStatus)}
+                                      disabled={loading || (!isManagerOrAdmin && user?.uid !== plan.employeeId)}
+                                    >
+                                      <SelectTrigger className="w-[120px]">
+                                        <SelectValue placeholder="Status" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="Pending">
+                                            <div className="flex items-center gap-2">
+                                              <Clock className="h-4 w-4 text-muted-foreground" />
+                                              Pending
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="Completed">
+                                            <div className="flex items-center gap-2">
+                                              <CheckCircle className="h-4 w-4 text-green-600" />
+                                              Completed
+                                            </div>
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    {plan.courseUrl && (
+                                        <Button asChild variant="outline" size="sm">
+                                            <a href={plan.courseUrl} target="_blank" rel="noopener noreferrer">
+                                                Open
+                                                <ExternalLink className="ml-2 h-4 w-4" />
+                                            </a>
+                                        </Button>
+                                    )}
+                                </div>
                             </TableCell>
                         </TableRow>
                     ))
