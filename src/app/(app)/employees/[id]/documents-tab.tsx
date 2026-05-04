@@ -18,8 +18,9 @@ import { cn } from "@/lib/utils";
 export default function DocumentsTab({ employeeId }: { employeeId: string }) {
   const [documents, setDocuments] = useState<UserDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const isManagerOrAdmin = role && ['manager', 'admin'].includes(role);
+  const isOwner = user?.uid === employeeId;
 
   const fetchDocuments = useCallback(() => {
     setLoading(true);
@@ -81,7 +82,11 @@ export default function DocumentsTab({ employeeId }: { employeeId: string }) {
             <CardTitle>Document Management</CardTitle>
             <CardDescription>Manage employee-related documents and links.</CardDescription>
         </div>
-        <UploadDocumentDialog employeeId={employeeId} disabled={!isManagerOrAdmin} onDocumentUploaded={fetchDocuments} />
+        <UploadDocumentDialog 
+            employeeId={employeeId} 
+            disabled={!isManagerOrAdmin && !isOwner} 
+            onDocumentUploaded={fetchDocuments} 
+        />
       </CardHeader>
       <CardContent>
         <Table>
