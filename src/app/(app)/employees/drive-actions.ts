@@ -32,6 +32,7 @@ export async function uploadFileToDrive(formData: FormData) {
         body: stream,
       },
       fields: 'id, webViewLink, name',
+      supportsAllDrives: true, // Required for Shared Drives
     });
 
     const fileId = response.data.id;
@@ -47,6 +48,7 @@ export async function uploadFileToDrive(formData: FormData) {
         role: 'reader',
         type: 'anyone',
       },
+      supportsAllDrives: true, // Required for Shared Drives
     });
 
     // 3. Get the direct link
