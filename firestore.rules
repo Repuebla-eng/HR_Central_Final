@@ -64,7 +64,8 @@ service cloud.firestore {
 
     // --- Rules for 'delegations' collection ---
     match /delegations/{delegationId} {
-      allow read, write: if isOwner(delegationId) && isSuperintendent(delegationId);
+      allow read: if isAuthenticated();
+      allow write: if isOwner(delegationId) && isSuperintendent(delegationId);
       allow delete: if false;
     }
 

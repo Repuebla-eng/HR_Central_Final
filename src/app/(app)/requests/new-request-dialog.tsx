@@ -89,6 +89,11 @@ export default function NewRequestDialog({ isOpen, onOpenChange }: { isOpen: boo
         return;
       }
 
+      // Check for active delegation
+      const delegationDoc = await getDoc(doc(db, 'delegations', superintendentId));
+      const delegationData = delegationDoc.exists() ? delegationDoc.data() : null;
+      const isActiveDelegation = delegationData && delegationData.active;
+
       const newRequest: Omit<LeaveRequest, 'id'> = {
         requesterId: user.uid,
         requesterName: employeeName, 
@@ -96,12 +101,13 @@ export default function NewRequestDialog({ isOpen, onOpenChange }: { isOpen: boo
         startDate: Timestamp.fromDate(new Date(data.startDate)),
         endDate: Timestamp.fromDate(new Date(data.endDate)),
         reason: data.reason,
-        status: 'Pending',
+        status: isActiveDelegation ? 'Delegated' : 'Pending',
         createdAt: Timestamp.now(),
         approvers: {
           operationsSuperintendent: {
             approverId: superintendentId,
             status: 'Pending',
+            ...(isActiveDelegation && { delegatedTo: delegationData.delegateId }),
           },
         },
       };

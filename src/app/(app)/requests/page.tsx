@@ -147,6 +147,9 @@ export default function RequestsPage() {
           
           if (allOthersApproved) {
             updateData['status'] = 'Approved';
+          } else if (currentData.status === 'Delegated') {
+            // If it was delegated and the delegate approved, move it to Pending for others
+            updateData['status'] = 'Pending';
           }
         }
         
@@ -212,8 +215,8 @@ export default function RequestsPage() {
 
     // Handle Superintendent/Delegate approval
     if (operationsSuperintendent.status === 'Pending') {
-      // If the request is delegated, only the delegate can approve.
-      if (request.status === 'Delegated' && isDelegate) {
+      // If the request is delegated, both the delegate and the superintendent can approve.
+      if (request.status === 'Delegated' && (isDelegate || isSuperintendent)) {
         return 'operationsSuperintendent';
       }
       // If the request is pending (not delegated), only the superintendent can approve.

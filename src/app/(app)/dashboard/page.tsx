@@ -16,8 +16,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import RiskAnalysisChart from "./risk-analysis-chart";
 import ExpiringDocumentsCard from "./expiring-documents-card";
 import AssignedEvaluationsCard from "./assigned-evaluations-card";
-import AssignedAuditsCard from "./assigned-audits-card"; // Import the new component
-import type { UserDocument, Employee, Evaluation, TechnicalAudit } from "@/lib/types";
+import AssignedAuditsCard from "./assigned-audits-card"; 
+import PendingTrainingCard from "./pending-training-card";
+import type { UserDocument, Employee, Evaluation, TechnicalAudit, TrainingPlan } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -37,7 +38,8 @@ export default function Dashboard() {
   const [kpiData, setKpiData] = useState<KpiData | null>(null);
   const [expiringDocuments, setExpiringDocuments] = useState<EnrichedDocument[]>([]);
   const [assignedEvaluations, setAssignedEvaluations] = useState<Evaluation[]>([]);
-  const [assignedAudits, setAssignedAudits] = useState<TechnicalAudit[]>([]); // New state for audits
+  const [assignedAudits, setAssignedAudits] = useState<TechnicalAudit[]>([]);
+  const [pendingTrainingPlans, setPendingTrainingPlans] = useState<TrainingPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, role, loading: authLoading } = useAuth();
@@ -207,18 +209,30 @@ export default function Dashboard() {
         // Listener for assigned technical audits
         const assignedAuditsQuery = query(
             collection(db, "technicalAudits"),
-            where("evaluadoId", "==", user.uid),
+            where("evaluadorId", "==", user.uid),
             where("status", "==", "Pendiente")
         );
         const auditsUnsubscribe = onSnapshot(assignedAuditsQuery, (snapshot) => {
             const auditsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalAudit));
             setAssignedAudits(auditsData);
         }, commonQueryError('technical audits'));
+        
+        // Listener for pending training plans
+        const pendingTrainingQuery = query(
+            collection(db, "trainingPlans"),
+            where("employeeId", "==", user.uid),
+            where("status", "==", "Pending")
+        );
+        const trainingUnsubscribe = onSnapshot(pendingTrainingQuery, (snapshot) => {
+            const trainingData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as TrainingPlan));
+            setPendingTrainingPlans(trainingData);
+        }, commonQueryError('training plans'));
 
 
         return () => {
             evalsUnsubscribe();
             auditsUnsubscribe();
+            trainingUnsubscribe();
         };
     }, [authLoading, user]);
 
@@ -314,9 +328,10 @@ export default function Dashboard() {
           </div>
         </>
       ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
               <AssignedEvaluationsCard evaluations={assignedEvaluations} loading={isLoading} />
               <AssignedAuditsCard audits={assignedAudits} loading={isLoading} />
+              <PendingTrainingCard trainingPlans={pendingTrainingPlans} loading={isLoading} />
               <ExpiringDocumentsCard documents={expiringDocuments} loading={isLoading} />
           </div>
       )}

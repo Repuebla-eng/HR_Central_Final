@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase/config';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useAuth } from '@/hooks/use-auth';
 import type { LeaveRequest, Employee } from '@/lib/types';
 import { format, getMonth, getYear, differenceInHours, differenceInDays } from 'date-fns';
@@ -70,7 +70,7 @@ export default function LeaveSummaryPage() {
     const fetchData = async () => {
       try {
         const reqQuery = query(collection(db, 'leaveRequests'));
-        const empQuery = query(collection(db, 'employees'));
+        const empQuery = query(collection(db, 'employees'), where('status', '==', 'Active'));
 
         const [requestsSnapshot, employeesSnapshot] = await Promise.all([
           getDocs(reqQuery),
@@ -80,7 +80,10 @@ export default function LeaveSummaryPage() {
         const fetchedRequests = requestsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as LeaveRequest[];
         const fetchedEmployees = employeesSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Employee[];
 
-        setRequests(fetchedRequests.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+        const activeEmpIds = new Set(fetchedEmployees.map(e => e.id));
+        const filteredFetchedRequests = fetchedRequests.filter(req => activeEmpIds.has(req.requesterId));
+
+        setRequests(filteredFetchedRequests.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
         setEmployees(fetchedEmployees.sort((a, b) => a.name.localeCompare(b.name)));
       } catch (error) {
         console.error("Error fetching leave summary data:", error);

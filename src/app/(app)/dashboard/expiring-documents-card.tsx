@@ -44,7 +44,7 @@ export default function ExpiringDocumentsCard({ documents, loading }: ExpiringDo
                     <Skeleton className="h-12 w-full" />
                 </div>
             ) : documents.length > 0 ? (
-                <div className="space-y-4 max-h-[280px] overflow-y-auto">
+                <div className="space-y-4 max-h-[200px] overflow-y-auto pr-2">
                     {documents.map(doc => (
                         <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
                            <div>
@@ -61,10 +61,10 @@ export default function ExpiringDocumentsCard({ documents, loading }: ExpiringDo
                     ))}
                 </div>
             ) : (
-                <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
-                    <Info className="h-10 w-10 mb-2" />
-                    <p className="font-semibold">No documents are expiring soon.</p>
-                    <p className="text-sm">All certifications and documents are up to date.</p>
+                <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+                    <Info className="h-8 w-8 mb-2" />
+                    <p className="font-semibold text-sm">No documents are expiring soon.</p>
+                    <p className="text-xs">All certifications and documents are up to date.</p>
                 </div>
             )}
           </CardContent>

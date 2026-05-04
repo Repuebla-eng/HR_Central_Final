@@ -37,7 +37,7 @@ export default function AssignedAuditsCard({ audits, loading }: AssignedAuditsCa
                     <Skeleton className="h-14 w-full" />
                 </div>
             ) : audits.length > 0 ? (
-                <div className="space-y-3 max-h-[280px] overflow-y-auto">
+                <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
                     {audits.map(au => (
                         <div key={au.id} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
                            <div className="flex-1">
@@ -54,10 +54,10 @@ export default function AssignedAuditsCard({ audits, loading }: AssignedAuditsCa
                     ))}
                 </div>
             ) : (
-                <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
-                    <Info className="h-10 w-10 mb-2" />
-                    <p className="font-semibold">No pending audits.</p>
-                    <p className="text-sm">You're all caught up!</p>
+                <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+                    <Info className="h-8 w-8 mb-2" />
+                    <p className="font-semibold text-sm">No pending audits.</p>
+                    <p className="text-xs">You're all caught up!</p>
                 </div>
             )}
           </CardContent>

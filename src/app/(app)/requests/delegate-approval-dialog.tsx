@@ -35,15 +35,22 @@ export default function DelegateApprovalDialog({ isOpen, onOpenChange, onDelegat
   useEffect(() => {
     if(user) {
         const fetchEmployees = async () => {
-        // Fetch all active employees except the current user
-        const q = query(
-            collection(db, 'employees'), 
-            where('status', '==', 'Active'), 
-            where('uid', '!=', user.uid)
-        );
-        const snapshot = await getDocs(q);
-        const employeeList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-        setEmployees(employeeList);
+          try {
+            // Fetch all active employees
+            const q = query(
+                collection(db, 'employees'), 
+                where('status', '==', 'Active')
+            );
+            const snapshot = await getDocs(q);
+            const employeeList = snapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() } as Employee))
+              // Filter in memory for role and to exclude current user
+              .filter(emp => emp.uid !== user.uid && (emp.role === 'admin' || emp.role === 'manager'));
+            
+            setEmployees(employeeList);
+          } catch (error) {
+            console.error("Error fetching potential delegates:", error);
+          }
         };
         fetchEmployees();
     }

@@ -39,7 +39,7 @@ export default function AssignedEvaluationsCard({ evaluations, loading }: Assign
                     <Skeleton className="h-14 w-full" />
                 </div>
             ) : evaluations.length > 0 ? (
-                <div className="space-y-3 max-h-[280px] overflow-y-auto">
+                <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
                     {evaluations.map(ev => {
                         const evaluatedPerson = ev.evaluadoName || ev.evaluadoId;
                         return (
@@ -59,10 +59,10 @@ export default function AssignedEvaluationsCard({ evaluations, loading }: Assign
                     })}
                 </div>
             ) : (
-                <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
-                    <Info className="h-10 w-10 mb-2" />
-                    <p className="font-semibold">No pending evaluations.</p>
-                    <p className="text-sm">You're all caught up!</p>
+                <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
+                    <Info className="h-8 w-8 mb-2" />
+                    <p className="font-semibold text-sm">No pending evaluations.</p>
+                    <p className="text-xs">You're all caught up!</p>
                 </div>
             )}
           </CardContent>
