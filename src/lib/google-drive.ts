@@ -1,8 +1,10 @@
-import { google } from 'googleapis';
 import path from 'path';
 import fs from 'fs';
 
 export async function getDriveClient() {
+  // Lazy load googleapis to avoid deployment timeouts
+  const { google } = await import('googleapis');
+  
   const saPath = path.resolve(process.cwd(), 'service-account.json');
   let credentials;
 
